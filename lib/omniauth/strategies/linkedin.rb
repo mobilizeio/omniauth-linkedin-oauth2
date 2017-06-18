@@ -44,11 +44,33 @@ module OmniAuth
         { 'raw_info' => raw_info }
       end
 
-      def callback_url
-        full_host + script_name + callback_path
+      alias :oauth2_access_token :access_token
+
+      def full_host
+        "#{APP_CONFIG['protocol']}://app.#{APP_CONFIG['host']}"
       end
 
-      alias :oauth2_access_token :access_token
+      def callback_url
+        url = super
+
+        if request.params['redirect_to']
+          uri = URI.parse(request.params['redirect_to'])
+          domain = uri.host
+          url = URI.encode("#{url}?domain_redirect=#{domain}")
+        elsif request.params['domain_redirect']
+          url = URI.encode("#{url}?domain_redirect=#{request.params['domain_redirect']}")
+        end
+
+        url
+      end
+
+      def callback_phase
+        if request.base_url == "#{APP_CONFIG['protocol']}://app.#{APP_CONFIG['host']}" && !!request.params['domain_redirect']
+          redirect "#{APP_CONFIG['protocol']}://#{request.params['domain_redirect']}#{request.fullpath}"
+        else
+          super
+        end
+      end
 
       def access_token
         ::OAuth2::AccessToken.new(client, oauth2_access_token.token, {
