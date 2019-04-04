@@ -64,8 +64,19 @@ module OmniAuth
         url
       end
 
+      def domain(url)
+        url.strip!
+        url = "https://#{url}" unless url.include?('://')
+        uri = Addressable::URI.parse(url)
+        uri.domain
+      rescue
+        nil
+      end
+
       def callback_phase
-        if request.base_url == "#{APP_CONFIG['protocol']}://app.#{APP_CONFIG['host']}" && !!request.params['domain_redirect']
+        host = domain(request.params['domain_redirect']) if request.params['domain_redirect']
+
+        if request.base_url == "#{APP_CONFIG['protocol']}://app.#{APP_CONFIG['host']}" && host && host.downcase != "app.#{APP_CONFIG['host']}".downcase
           redirect "#{APP_CONFIG['protocol']}://#{request.params['domain_redirect']}#{request.fullpath}"
         else
           super
